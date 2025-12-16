@@ -363,6 +363,3 @@ The project includes `railway.json` and `Procfile` for automatic configuration:
 - [ ] Add resume templates and formatting options
 - [ ] Implement caching for company research
 
-## 📄 License
-
-MIT License - See [LICENSE](LICENSE) for details.
