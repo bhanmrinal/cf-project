@@ -25,12 +25,10 @@ class VectorStoreService:
     def client(self) -> chromadb.Client:
         """Lazy initialization of ChromaDB client."""
         if self._client is None:
-            self._client = chromadb.Client(
-                ChromaSettings(
-                    chroma_db_impl="duckdb+parquet",
-                    persist_directory=self.settings.chroma_persist_directory,
-                    anonymized_telemetry=False,
-                )
+            # Use the new PersistentClient API (ChromaDB 0.4+)
+            self._client = chromadb.PersistentClient(
+                path=self.settings.chroma_persist_directory,
+                settings=ChromaSettings(anonymized_telemetry=False),
             )
         return self._client
 
@@ -254,10 +252,20 @@ class VectorStoreService:
         full_content = "\n".join(content_parts)
         embedding = self.embeddings.embed_query(full_content)
 
+        # Convert list values to comma-separated strings for ChromaDB metadata
+        clean_metadata = {"company_name": company_name}
+        for key, value in info.items():
+            if isinstance(value, list):
+                clean_metadata[key] = ", ".join(str(v) for v in value)
+            elif isinstance(value, (str, int, float, bool)) or value is None:
+                clean_metadata[key] = value
+            else:
+                clean_metadata[key] = str(value)
+
         collection.upsert(
             documents=[full_content],
             embeddings=[embedding],
-            metadatas=[{"company_name": company_name, **info}],
+            metadatas=[clean_metadata],
             ids=[company_name.lower().replace(" ", "_")],
         )
 

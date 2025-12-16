@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     allowed_extensions: list[str] = Field(default=["pdf", "docx"])
 
     class Config:
-        env_file = ".env"
+        env_file = (".env", "../.env")  # Look in current dir and parent dir
         env_file_encoding = "utf-8"
         extra = "ignore"
 

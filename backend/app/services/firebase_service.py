@@ -295,9 +295,9 @@ class FirebaseService:
             id=data["id"],
             role=MessageRole(data["role"]),
             content=data["content"],
-            agent_type=AgentType(data["agent_type"])
-            if data.get("agent_type")
-            else None,
+            agent_type=(
+                AgentType(data["agent_type"]) if data.get("agent_type") else None
+            ),
             metadata=data.get("metadata", {}),
             created_at=datetime.fromisoformat(data["created_at"]),
             reasoning=data.get("reasoning"),
@@ -457,9 +457,16 @@ class InMemoryStore:
         )
 
 
+_storage_instance = None
+
+
 def get_storage_service():
-    """Get the appropriate storage service based on configuration."""
-    firebase_service = FirebaseService()
-    if firebase_service.is_available:
-        return firebase_service
-    return InMemoryStore()
+    """Get the appropriate storage service based on configuration (singleton)."""
+    global _storage_instance
+    if _storage_instance is None:
+        firebase_service = FirebaseService()
+        if firebase_service.is_available:
+            _storage_instance = firebase_service
+        else:
+            _storage_instance = InMemoryStore()
+    return _storage_instance
