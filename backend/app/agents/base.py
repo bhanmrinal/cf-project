@@ -170,12 +170,29 @@ class BaseAgent(ABC):
             "languages": SectionType.LANGUAGES,
         }
 
-        for i, (title, content) in enumerate(matches):
+        # Titles that indicate LLM reasoning/metadata (NOT actual resume sections)
+        reasoning_titles = [
+            "key changes", "changes made", "changes", "reasoning", "explanation",
+            "notes", "summary of changes", "what i changed", "modifications",
+            "improvements", "optimization", "recommendations", "analysis",
+            "expected improvement", "match score", "score breakdown"
+        ]
+
+        order_idx = 0
+        for title, content in matches:
             title = title.strip()
             content = content.strip()
+            title_lower = title.lower()
+
+            # Skip reasoning/metadata sections - these should only appear in chat
+            if any(rt in title_lower for rt in reasoning_titles):
+                continue
+
+            # Skip empty sections
+            if not content:
+                continue
 
             section_type = SectionType.OTHER
-            title_lower = title.lower()
             for key, stype in type_mapping.items():
                 if key in title_lower:
                     section_type = stype
@@ -183,9 +200,10 @@ class BaseAgent(ABC):
 
             sections.append(
                 ResumeSection(
-                    section_type=section_type, title=title, content=content, order=i
+                    section_type=section_type, title=title, content=content, order=order_idx
                 )
             )
+            order_idx += 1
 
         if not sections and original_resume.sections:
             return original_resume.sections

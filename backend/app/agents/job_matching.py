@@ -273,7 +273,11 @@ COMPANY_VALUES: value1, value2"""
         self, resume: Resume, job_analysis: dict[str, Any]
     ) -> dict[str, Any]:
         """
-        Calculate match score between resume and job requirements.
+        Calculate match score using hybrid keyword + semantic matching.
+
+        Uses both:
+        1. Keyword matching with synonyms and variations
+        2. LLM-based semantic understanding for context-aware matching
 
         Args:
             resume: The resume to evaluate.
@@ -284,50 +288,103 @@ COMPANY_VALUES: value1, value2"""
         """
         resume_text = self._format_resume_for_prompt(resume).lower()
 
-        def count_matches(skills: list[str]) -> tuple[list[str], list[str]]:
+        # Expanded skill synonyms for better matching
+        skill_synonyms = {
+            "python": ["python", "py", "django", "flask", "fastapi", "pytorch", "tensorflow"],
+            "programming": ["programming", "coding", "development", "software", "engineer"],
+            "ml": ["ml", "machine learning", "deep learning", "ai", "artificial intelligence", "neural network"],
+            "data": ["data", "analytics", "analysis", "statistics", "statistical"],
+            "math": ["math", "mathematics", "mathematical", "calculus", "linear algebra", "probability"],
+            "communication": ["communication", "communicate", "presentation", "written", "verbal", "articulate"],
+            "leadership": ["leadership", "lead", "led", "leading", "manage", "managed", "team lead"],
+            "problem solving": ["problem solving", "problem-solving", "analytical", "critical thinking", "debug", "troubleshoot"],
+            "teamwork": ["teamwork", "team", "collaborate", "collaboration", "cross-functional"],
+            "agile": ["agile", "scrum", "sprint", "kanban", "jira"],
+            "cloud": ["cloud", "aws", "azure", "gcp", "google cloud", "serverless"],
+            "database": ["database", "sql", "mysql", "postgresql", "mongodb", "nosql", "redis"],
+            "api": ["api", "rest", "restful", "graphql", "microservices"],
+            "testing": ["testing", "test", "unit test", "pytest", "jest", "qa", "quality"],
+            "git": ["git", "github", "gitlab", "version control", "ci/cd"],
+            "degree": ["degree", "bachelor", "master", "b.tech", "b.e.", "m.tech", "phd", "graduate"],
+            "engineering": ["engineering", "engineer", "b.tech", "b.e.", "computer science", "cs", "ece", "electrical"],
+        }
+
+        def count_matches_with_synonyms(skills: list[str]) -> tuple[list[str], list[str]]:
+            """Match skills using synonyms and semantic variations."""
             found = []
             missing = []
             for skill in skills:
-                skill_lower = skill.lower()
+                skill_lower = skill.lower().strip()
+                
+                # Direct match variations
                 skill_variants = [
                     skill_lower,
                     skill_lower.replace("-", " "),
                     skill_lower.replace(" ", "-"),
+                    skill_lower.replace(" ", ""),
                 ]
-                if any(variant in resume_text for variant in skill_variants):
-                    found.append(skill)
-                else:
+                
+                # Check for synonym matches
+                matched = False
+                for variant in skill_variants:
+                    if variant in resume_text:
+                        found.append(skill)
+                        matched = True
+                        break
+                
+                if not matched:
+                    # Check synonyms
+                    for base_skill, synonyms in skill_synonyms.items():
+                        if any(syn in skill_lower for syn in synonyms) or skill_lower in synonyms:
+                            # Check if any synonym is in resume
+                            if any(syn in resume_text for syn in synonyms):
+                                found.append(skill)
+                                matched = True
+                                break
+                
+                if not matched:
                     missing.append(skill)
+            
             return found, missing
 
-        required_found, required_missing = count_matches(
+        # Use enhanced matching
+        required_found, required_missing = count_matches_with_synonyms(
             job_analysis["required_skills"]
         )
-        preferred_found, preferred_missing = count_matches(
+        preferred_found, preferred_missing = count_matches_with_synonyms(
             job_analysis["preferred_skills"]
         )
-        soft_found, soft_missing = count_matches(job_analysis["soft_skills"])
-        keywords_found, keywords_missing = count_matches(job_analysis["keywords"])
+        soft_found, soft_missing = count_matches_with_synonyms(job_analysis["soft_skills"])
+        keywords_found, keywords_missing = count_matches_with_synonyms(job_analysis["keywords"])
+
+        # Get LLM-based semantic match score for better accuracy
+        semantic_score = await self._get_semantic_match_score(resume, job_analysis)
 
         required_total = len(job_analysis["required_skills"]) or 1
         preferred_total = len(job_analysis["preferred_skills"]) or 1
         soft_total = len(job_analysis["soft_skills"]) or 1
         keywords_total = len(job_analysis["keywords"]) or 1
 
+        # Keyword-based scores
         required_score = (len(required_found) / required_total) * 100
         preferred_score = (len(preferred_found) / preferred_total) * 100
         soft_score = (len(soft_found) / soft_total) * 100
         keywords_score = (len(keywords_found) / keywords_total) * 100
 
-        overall_score = (
+        # Hybrid score: 60% keyword-based + 40% semantic
+        keyword_overall = (
             required_score * 0.4
             + preferred_score * 0.2
             + soft_score * 0.15
             + keywords_score * 0.25
         )
+        
+        overall_score = keyword_overall * 0.6 + semantic_score * 0.4
 
         return {
             "overall_score": round(overall_score, 1),
+            "keyword_score": round(keyword_overall, 1),
+            "semantic_score": round(semantic_score, 1),
             "required_skills": {
                 "score": round(required_score, 1),
                 "found": required_found,
@@ -353,6 +410,53 @@ COMPANY_VALUES: value1, value2"""
                 required_missing, preferred_missing, soft_missing
             ),
         }
+
+    async def _get_semantic_match_score(
+        self, resume: Resume, job_analysis: dict[str, Any]
+    ) -> float:
+        """
+        Get semantic match score using LLM for context-aware matching.
+        
+        This catches matches that keyword matching misses, like:
+        - "Built ML systems" matching "machine learning experience"
+        - "Led team of 5" matching "leadership skills"
+        """
+        resume_text = self._format_resume_for_prompt(resume)
+        
+        semantic_prompt = f"""Analyze how well this resume matches the job requirements.
+Consider context and meaning, not just exact keywords.
+
+RESUME:
+{resume_text[:3000]}
+
+JOB REQUIREMENTS:
+- Required Skills: {", ".join(job_analysis["required_skills"])}
+- Preferred Skills: {", ".join(job_analysis["preferred_skills"])}
+- Soft Skills: {", ".join(job_analysis["soft_skills"])}
+
+Rate the match from 0-100 considering:
+1. Does the candidate have equivalent/transferable skills even if not exact keywords?
+2. Does their experience demonstrate the required capabilities?
+3. Do their projects/achievements show relevant expertise?
+
+Respond with ONLY a number between 0-100, nothing else."""
+
+        try:
+            response = await self._invoke_llm(
+                system_prompt="You are an expert recruiter. Evaluate resume-job fit semantically. Respond with only a number 0-100.",
+                user_prompt=semantic_prompt,
+            )
+            
+            # Extract number from response
+            import re
+            match = re.search(r'\d+', response)
+            if match:
+                score = min(100, max(0, int(match.group())))
+                return float(score)
+        except Exception:
+            pass
+        
+        return 50.0  # Default to neutral if LLM fails
 
     def _generate_recommendations(
         self,
@@ -431,6 +535,8 @@ IMPORTANT: Only add skills/keywords where the candidate has genuine experience. 
     ) -> str:
         """Format the match result message."""
         score = match_result["overall_score"]
+        keyword_score = match_result.get("keyword_score", score)
+        semantic_score = match_result.get("semantic_score", score)
         skill_gaps = match_result["skill_gaps"]
 
         if score >= 80:
@@ -440,11 +546,21 @@ IMPORTANT: Only add skills/keywords where the candidate has genuine experience. 
         elif score >= 40:
             rating = "Moderate match - optimization recommended"
         else:
-            rating = "Low match - significant optimization needed"
+            rating = "Low match - consider highlighting transferable skills"
 
-        message = f"""📊 **Match Analysis Complete**
+        # Show found skills
+        found_skills = (
+            match_result["required_skills"]["found"] +
+            match_result["preferred_skills"]["found"]
+        )[:8]
+
+        message = f"""📊 **Match Analysis Complete** (Hybrid Keyword + Semantic Analysis)
 
 **Overall Match Score: {score}%** - {rating}
+
+**Scoring Method:**
+- Keyword Match: {keyword_score}% (exact skill/keyword matching)
+- Semantic Match: {semantic_score}% (context-aware, transferable skills)
 
 **Score Breakdown:**
 - Required Skills: {match_result["required_skills"]["score"]}%
@@ -452,7 +568,10 @@ IMPORTANT: Only add skills/keywords where the candidate has genuine experience. 
 - Soft Skills: {match_result["soft_skills"]["score"]}%
 - Keywords: {match_result["keywords"]["score"]}%
 
-**Skill Gaps Identified:**
+**Skills Found in Your Resume:**
+{chr(10).join(f"✓ {skill}" for skill in found_skills) if found_skills else "• Analyzing..."}
+
+**Skill Gaps to Address:**
 {chr(10).join(f"• {gap}" for gap in skill_gaps[:5]) if skill_gaps else "• None - great job!"}
 
 **Recommendations:**
