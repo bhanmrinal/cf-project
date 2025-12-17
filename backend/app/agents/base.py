@@ -172,10 +172,22 @@ class BaseAgent(ABC):
 
         # Titles that indicate LLM reasoning/metadata (NOT actual resume sections)
         reasoning_titles = [
-            "key changes", "changes made", "changes", "reasoning", "explanation",
-            "notes", "summary of changes", "what i changed", "modifications",
-            "improvements", "optimization", "recommendations", "analysis",
-            "expected improvement", "match score", "score breakdown"
+            "key changes",
+            "changes made",
+            "changes",
+            "reasoning",
+            "explanation",
+            "notes",
+            "summary of changes",
+            "what i changed",
+            "modifications",
+            "improvements",
+            "optimization",
+            "recommendations",
+            "analysis",
+            "expected improvement",
+            "match score",
+            "score breakdown",
         ]
 
         order_idx = 0
@@ -200,7 +212,10 @@ class BaseAgent(ABC):
 
             sections.append(
                 ResumeSection(
-                    section_type=section_type, title=title, content=content, order=order_idx
+                    section_type=section_type,
+                    title=title,
+                    content=content,
+                    order=order_idx,
                 )
             )
             order_idx += 1
@@ -245,12 +260,16 @@ class BaseAgent(ABC):
                     {
                         "section": updated.title,
                         "type": "modified",
-                        "original_content": original.content[:200] + "..."
-                        if len(original.content) > 200
-                        else original.content,
-                        "new_content": updated.content[:200] + "..."
-                        if len(updated.content) > 200
-                        else updated.content,
+                        "original_content": (
+                            original.content[:200] + "..."
+                            if len(original.content) > 200
+                            else original.content
+                        ),
+                        "new_content": (
+                            updated.content[:200] + "..."
+                            if len(updated.content) > 200
+                            else updated.content
+                        ),
                     }
                 )
 
@@ -260,9 +279,11 @@ class BaseAgent(ABC):
                     {
                         "section": original.title,
                         "type": "removed",
-                        "original_content": original.content[:200] + "..."
-                        if len(original.content) > 200
-                        else original.content,
+                        "original_content": (
+                            original.content[:200] + "..."
+                            if len(original.content) > 200
+                            else original.content
+                        ),
                     }
                 )
 
