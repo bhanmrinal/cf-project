@@ -278,6 +278,34 @@ async def export_resume(resume_id: str, format: str = "pdf"):
         return await _export_pdf(resume, content, sections_to_export)
 
 
+def _clean_section_content(content: str) -> str:
+    """
+    Remove LLM reasoning/metadata from section content.
+    
+    This filters out things like "Key changes made:", "Here's what I changed:", etc.
+    that should only appear in chat, not in exported documents.
+    """
+    import re
+    
+    # Patterns that indicate LLM reasoning/metadata (not actual resume content)
+    reasoning_patterns = [
+        r"(?:^|\n)\s*(?:Key changes(?: made)?|Changes made|Here'?s? what I (?:changed|modified|updated)|What I (?:changed|did)|Reasoning|Explanation|Notes?|Summary of changes):\s*\n?.*",
+        r"(?:^|\n)\s*\d+\.\s*\*\*[^*]+\*\*:.*",  # Numbered bold items like "1. **Added summary**:"
+        r"(?:^|\n)\s*-\s*\*\*[^*]+\*\*:.*",  # Bullet bold items like "- **Emphasized skills**:"
+        r"(?:^|\n)\s*I (?:have |'ve )?(?:made the following|updated|modified|changed|reorganized|reordered|incorporated|highlighted|added|emphasized).*",
+    ]
+    
+    cleaned = content
+    for pattern in reasoning_patterns:
+        # Find where the reasoning starts and truncate
+        match = re.search(pattern, cleaned, re.IGNORECASE | re.DOTALL)
+        if match:
+            # Keep only content before the reasoning
+            cleaned = cleaned[:match.start()].strip()
+    
+    return cleaned
+
+
 async def _export_pdf(resume, content: str, sections=None):
     """Export resume as PDF."""
     import io
@@ -334,14 +362,29 @@ async def _export_pdf(resume, content: str, sections=None):
             )  # Remove markdown headers
             clean_title = clean_title.strip().upper()
 
-            # Skip sections with weird titles (like metadata)
+            # Skip sections with weird titles (like metadata or reasoning)
             if len(clean_title) > 50 or not clean_title:
+                continue
+            
+            # Skip sections that look like LLM reasoning
+            reasoning_titles = [
+                "key changes", "changes made", "reasoning", "explanation",
+                "notes", "summary of changes", "what i changed", "modifications"
+            ]
+            if any(rt in clean_title.lower() for rt in reasoning_titles):
                 continue
 
             story.append(Paragraph(clean_title, heading_style))
 
-            # Clean and format content - escape HTML special chars
-            section_content = section.content
+            # Clean section content - remove any LLM reasoning that got mixed in
+            section_content = _clean_section_content(section.content)
+            
+            # Skip empty sections after cleaning
+            if not section_content.strip():
+                story.pop()  # Remove the heading we just added
+                continue
+
+            # Escape HTML special chars for PDF rendering
             section_content = section_content.replace("&", "&amp;")
             section_content = section_content.replace("<", "&lt;")
             section_content = section_content.replace(">", "&gt;")
@@ -387,11 +430,11 @@ async def _export_docx(resume, content: str, sections=None):
         doc = Document()
 
         # Set margins
-        for section in doc.sections:
-            section.top_margin = Inches(0.75)
-            section.bottom_margin = Inches(0.75)
-            section.left_margin = Inches(0.75)
-            section.right_margin = Inches(0.75)
+        for doc_section in doc.sections:
+            doc_section.top_margin = Inches(0.75)
+            doc_section.bottom_margin = Inches(0.75)
+            doc_section.left_margin = Inches(0.75)
+            doc_section.right_margin = Inches(0.75)
 
         # Add title
         title = resume.filename.rsplit(".", 1)[0] if resume.filename else "Resume"
@@ -412,11 +455,26 @@ async def _export_docx(resume, content: str, sections=None):
             # Skip sections with weird titles (like metadata)
             if len(clean_title) > 50 or not clean_title:
                 continue
+            
+            # Skip sections that look like LLM reasoning
+            reasoning_titles = [
+                "key changes", "changes made", "reasoning", "explanation",
+                "notes", "summary of changes", "what i changed", "modifications"
+            ]
+            if any(rt in clean_title.lower() for rt in reasoning_titles):
+                continue
 
             doc.add_heading(clean_title, level=1)
 
+            # Clean section content - remove any LLM reasoning
+            section_content = _clean_section_content(section.content)
+            
+            # Skip empty sections after cleaning
+            if not section_content.strip():
+                continue
+
             # Add content paragraphs
-            for line in section.content.split("\n"):
+            for line in section_content.split("\n"):
                 if line.strip():
                     para = doc.add_paragraph(line.strip())
                     para.style.font.size = Pt(11)
