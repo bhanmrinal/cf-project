@@ -34,7 +34,9 @@ class CompanyResearchAgent(BaseAgent):
         self.vector_store = VectorStoreService()
 
     def get_system_prompt(self) -> str:
-        return """You are an expert career consultant and resume optimizer specializing in company research.
+        return """
+        
+You are an expert career consultant and resume optimizer specializing in company research.
 
 Your role is to:
 1. Research and understand target companies (culture, values, mission, hiring patterns)
@@ -51,7 +53,9 @@ When optimizing a resume:
 
 Output Format:
 When providing an optimized resume, format it with clear section headers using "## Section Name" format.
-Always explain your reasoning and the specific changes made."""
+Always explain your reasoning and the specific changes made.
+
+"""
 
     async def process(
         self,

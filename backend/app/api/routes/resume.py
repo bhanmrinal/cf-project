@@ -639,7 +639,7 @@ SUMMARY:
         # Return default scores on error
         return {
             "resume_id": resume_id,
-            "evaluation": {"overall": 75, "keywords": 70, "format": 80, "impact": 72},
+            "evaluation": {"overall": 0, "keywords": 0, "format": 0, "impact": 0},
             "strengths": ["Resume uploaded successfully"],
             "improvements": ["Consider adding more details"],
             "keywords_found": [],
