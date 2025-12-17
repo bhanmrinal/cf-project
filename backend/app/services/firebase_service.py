@@ -5,7 +5,7 @@ Handles all Firebase Firestore operations for storing conversations,
 resumes, and resume versions.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.core.config import get_settings
@@ -93,7 +93,7 @@ class FirebaseService:
 
     async def update_conversation(self, conversation: Conversation) -> Conversation:
         """Update an existing conversation."""
-        conversation.updated_at = datetime.utcnow()
+        conversation.updated_at = datetime.now(UTC)
 
         db = self._get_db()
         if db:
@@ -129,7 +129,7 @@ class FirebaseService:
             doc_ref.update(
                 {
                     "messages": firestore.ArrayUnion([self._message_to_dict(message)]),
-                    "updated_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.now(UTC).isoformat(),
                 }
             )
 
@@ -184,7 +184,7 @@ class FirebaseService:
 
     async def update_resume(self, resume: Resume) -> Resume:
         """Update an existing resume."""
-        resume.updated_at = datetime.utcnow()
+        resume.updated_at = datetime.now(UTC)
 
         db = self._get_db()
         if db:
@@ -438,7 +438,7 @@ class InMemoryStore:
         return self.conversations.get(conversation_id)
 
     async def update_conversation(self, conversation: Conversation) -> Conversation:
-        conversation.updated_at = datetime.utcnow()
+        conversation.updated_at = datetime.now(UTC)
         self.conversations[conversation.id] = conversation
         return conversation
 
@@ -451,7 +451,7 @@ class InMemoryStore:
 
     async def update_resume(self, resume: Resume) -> Resume:
         """Update an existing resume."""
-        resume.updated_at = datetime.utcnow()
+        resume.updated_at = datetime.now(UTC)
         self.resumes[resume.id] = resume
         return resume
 

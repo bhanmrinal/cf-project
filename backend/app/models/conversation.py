@@ -1,6 +1,6 @@
 """Conversation and message data models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -25,6 +25,11 @@ class AgentType(str, Enum):
     SECTION_ENHANCEMENT = "section_enhancement"
 
 
+def _utc_now() -> datetime:
+    """Get current UTC time (timezone-aware)."""
+    return datetime.now(UTC)
+
+
 class Message(BaseModel):
     """A single message in a conversation."""
 
@@ -33,7 +38,7 @@ class Message(BaseModel):
     content: str
     agent_type: AgentType | None = None
     metadata: dict = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utc_now)
 
     # For tracking agent reasoning and actions
     reasoning: str | None = None
@@ -49,13 +54,13 @@ class Conversation(BaseModel):
     messages: list[Message] = Field(default_factory=list)
     current_resume_version: int = 1
     context: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utc_now)
+    updated_at: datetime = Field(default_factory=_utc_now)
 
     def add_message(self, message: Message) -> None:
         """Add a message to the conversation."""
         self.messages.append(message)
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def get_history(self, limit: int | None = None) -> list[Message]:
         """Get conversation history, optionally limited to recent messages."""

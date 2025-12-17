@@ -28,7 +28,7 @@ reportlab>=4.0.0
 # Web Scraping and Research
 httpx>=0.27.0
 beautifulsoup4>=4.12.0
-duckduckgo-search>=6.0.0
+ddgs>=6.0.0
 
 # Utilities
 python-dotenv>=1.0.0

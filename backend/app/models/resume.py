@@ -1,6 +1,6 @@
 """Resume data models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -18,6 +18,11 @@ class SectionType(str, Enum):
     CERTIFICATIONS = "certifications"
     LANGUAGES = "languages"
     OTHER = "other"
+
+
+def _utc_now() -> datetime:
+    """Get current UTC time (timezone-aware)."""
+    return datetime.now(UTC)
 
 
 class ResumeSection(BaseModel):
@@ -39,8 +44,8 @@ class Resume(BaseModel):
     raw_text: str
     sections: list[ResumeSection] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utc_now)
+    updated_at: datetime = Field(default_factory=_utc_now)
 
     def get_section(self, section_type: SectionType) -> ResumeSection | None:
         """Get a specific section by type."""
@@ -69,5 +74,5 @@ class ResumeVersion(BaseModel):
     sections: list[ResumeSection] = Field(default_factory=list)
     changes_description: str = ""
     agent_used: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utc_now)
     parent_version_id: str | None = None

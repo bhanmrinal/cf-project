@@ -198,24 +198,27 @@ Always explain your reasoning and the specific changes made."""
             Dictionary with company information.
         """
         try:
-            from duckduckgo_search import DDGS
+            # Try new package name first, fall back to old name
+            try:
+                from ddgs import DDGS
+            except ImportError:
+                from duckduckgo_search import DDGS
 
-            with DDGS() as ddgs:
-                results = list(
-                    ddgs.text(
-                        f"{company_name} company culture values mission", max_results=5
-                    )
+            ddgs = DDGS()
+            results = list(
+                ddgs.text(
+                    f"{company_name} company culture values mission", max_results=5
                 )
+            )
 
             culture_info = " ".join([r.get("body", "") for r in results[:3]])
 
-            with DDGS() as ddgs:
-                hiring_results = list(
-                    ddgs.text(
-                        f"{company_name} hiring process interview what they look for",
-                        max_results=3,
-                    )
+            hiring_results = list(
+                ddgs.text(
+                    f"{company_name} hiring process interview what they look for",
+                    max_results=3,
                 )
+            )
 
             hiring_info = " ".join([r.get("body", "") for r in hiring_results[:2]])
 
