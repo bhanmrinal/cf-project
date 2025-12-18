@@ -7,9 +7,9 @@ This project was implemented with the help of AI tooling, but final responsibili
 ### 1. AI Tools Used
 
 - **ChatGPT & Claude Playground**
-  - Used inside the IDE and occasionally for web UI.
+  - Used inside browser and occasionally for web UI.
 - **Gemini code assistant on VSCode**
-  - Used for minor completions and boilerplate (e.g., simple loops, type hints).
+  - Used for minor completions and boilerplate (e.g.,pydantic models, api routes, loops, type hints).
 
 No external proprietary code generators (beyond the above) or closed‑source model weights were embedded directly in the repository.
 
@@ -33,6 +33,7 @@ AI was used as a **productivity assistant**, not as an autonomous code author. T
     - Pydantic models.
     - FastAPI routes and response models.
     - Base agent abstractions and the conversation router.
+    - Some business logic in creatind and deploying the pipeline  
   - Helped refactor imports when moving `run.py` and reorganizing the package structure.
 
 - **Debugging & Error Resolution**
