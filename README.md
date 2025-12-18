@@ -84,7 +84,7 @@ A conversational AI system for resume optimization using specialized agents. Bui
 ## Project Structure
 
 ```
-careerflow-project/
+cf-project/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/           # Specialized AI agents
@@ -137,8 +137,8 @@ careerflow-project/
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/careerflow-project.git
-cd careerflow-project
+git clone https://github.com/yourusername/cf-project.git
+cd cf-project
 
 # Create virtual environment
 python -m venv venv
